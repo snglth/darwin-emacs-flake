@@ -11,6 +11,11 @@ jobs:
     # Apple Silicon (arm64) runner — required to build aarch64-darwin.
     # Free minutes on public repositories.
     runs-on: macos-14
+    strategy:
+      # emacs-gpu is experimental; don't let it cancel the emacs build.
+      fail-fast: false
+      matrix:
+        package: [emacs, emacs-gpu]
     steps:
       - uses: actions/checkout@v4
 
@@ -27,4 +32,4 @@ jobs:
 
       # Building the package automatically pushes it (and its deps) to the cache
       # via cachix-action's post-build hook.
-      - run: nix build .#emacs --print-build-logs
+      - run: nix build .#${{ matrix.package }} --print-build-logs
