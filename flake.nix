@@ -60,7 +60,14 @@
           rev = "db296675d856f924c80671428565ed377314caea";
           hash = "sha256-+mFtRJvvIQPjac2U6hkxx+2vXtEKg58PQyhwKiubB0Y=";
         };
-        configureFlags = (old.configureFlags or [ ]) ++ [ "--with-mtl" ];
+        # OBJC=clang: the --with-mtl check does AC_LANG_PUSH([Objective C]),
+        # which makes autoconf pick `gcc` for Objective-C — and that compiler
+        # lacks the Apple framework search path, so `Metal/Metal.h` isn't found
+        # even though clang finds it. Pin OBJC to the same wrapped clang as CC.
+        configureFlags = (old.configureFlags or [ ]) ++ [
+          "--with-mtl"
+          "OBJC=clang"
+        ];
       });
     in
     {
