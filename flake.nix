@@ -42,10 +42,30 @@
           ./patches/ns_color_cache_0001.patch
         ];
       });
+
+      # Experimental: Emacs with the Metal GPU display backend from
+      # github:tanrax/emacs-gpu (RFC, emacs-devel 2026-06 msg00177, Andros
+      # Fenollosa). It's a full Emacs 31.0.90 fork, so we build its tree directly
+      # rather than apply a 7400-line diff against emacs-git (32.0.50). Shaders
+      # are embedded and compiled at runtime via newLibraryWithSource:, so no
+      # offline Metal toolchain (Xcode) is required — only the SDK frameworks,
+      # which configure links via MTL_LIBS when given `--with-mtl`. We keep the
+      # overlay's native-comp patch + configureFlags and just add the flag.
+      emacs-gpu = pkgs.emacs-git.overrideAttrs (old: {
+        pname = "emacs-gpu";
+        version = "31.0.90-gpu-unstable-2026-06-18";
+        src = pkgs.fetchFromGitHub {
+          owner = "tanrax";
+          repo = "emacs-gpu";
+          rev = "db296675d856f924c80671428565ed377314caea";
+          hash = "sha256-+mFtRJvvIQPjac2U6hkxx+2vXtEKg58PQyhwKiubB0Y=";
+        };
+        configureFlags = (old.configureFlags or [ ]) ++ [ "--with-mtl" ];
+      });
     in
     {
       packages.${system} = {
-        inherit emacs;
+        inherit emacs emacs-gpu;
         default = emacs;
       };
     };

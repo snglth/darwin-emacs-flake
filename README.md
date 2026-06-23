@@ -1,6 +1,6 @@
 # darwin-emacs-flake
 
-A single-output flake that provides `emacs-git` for **aarch64-darwin** with a stack of NS patches:
+A flake that provides patched emacs package for **aarch64-darwin** with a stack of NS patches:
 
 | Patch | Origin | Effect |
 |-------|--------|--------|
@@ -20,7 +20,8 @@ cache"](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00515.html).
 
 
 ```
-packages.aarch64-darwin.emacs    # the patched emacs-git (also `.default`)
+packages.aarch64-darwin.emacs       # the patched emacs-git (also `.default`)
+packages.aarch64-darwin.emacs-gpu   # experimental Metal GPU backend (see below)
 ```
 
 ## Cache
@@ -32,4 +33,21 @@ nix.settings.substituters = [ "https://snglth.cachix.org" ];
 nix.settings.trusted-public-keys = [
   "snglth.cachix.org-1:XDPcXVEs97RJQ1SVmjf7cnZHcrE9pH7tE1TYJhKKJ1U="
 ];
+```
+
+## Experimental: Metal GPU backend
+
+`packages.aarch64-darwin.emacs-gpu` builds [`tanrax/emacs-gpu`](https://github.com/tanrax/emacs-gpu)
+— a full Emacs 31.0.90 fork by Andros Fenollosa adding a Metal GPU display
+backend ([RFC, emacs-devel 2026-06](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00177.html)).
+Because it's a whole fork (not a patch on master), it's built from the fork's
+own source with `--with-mtl` added to the overlay's `emacs-git` recipe, rather
+than stacked onto the patched `emacs` above.
+
+Shaders are embedded and compiled at runtime (`newLibraryWithSource:`), so no
+offline Metal toolchain is needed — only the macOS SDK frameworks that
+`--with-mtl` links. It's independent of `emacs`/`.default`; build it explicitly:
+
+```sh
+nix build .#emacs-gpu -L
 ```
