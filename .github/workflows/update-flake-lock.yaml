@@ -1,0 +1,35 @@
+name: update-flake-lock
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    # Just re-resolves inputs — no build — so use a cheap Linux runner.
+    # The macOS build runs in build.yaml, triggered by the push below.
+    runs-on: ubuntu-latest
+    steps:
+      # ssh-key sets the remote over SSH with the deploy key, so the later push
+      # is authenticated as the key (not GITHUB_TOKEN) and DOES trigger
+      # build.yaml on master. Requires a write-access deploy key whose private
+      # key is stored in the FLAKE_UPDATE_DEPLOY_KEY repo secret.
+      - uses: actions/checkout@v4
+        with:
+          ssh-key: '${{ secrets.FLAKE_UPDATE_DEPLOY_KEY }}'
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+
+      - name: Update flake.lock
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Only creates a commit if the lock actually changed.
+          nix flake update --commit-lock-file
+
+      - name: Push
+        run: git push origin HEAD:master
