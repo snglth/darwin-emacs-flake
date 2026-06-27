@@ -27,14 +27,24 @@
       # Patch order matters — fix-ns-x-colors is lisp-only; system-appearance and
       # round-undecorated-frame both touch nsterm.m/frame.h and are applied in the
       # same order emacs-plus uses; ns_color_cache is the local color cache.
-      # The three emacs-plus patches are vendored from
-      # d12frosted/homebrew-emacs-plus (patches/emacs-31, symlinked from emacs-32).
+      # The emacs-plus patches are vendored from d12frosted/homebrew-emacs-plus
+      # (patches/emacs-31, symlinked from emacs-32).
+      #
+      # frame-transparency + ns-glass-effect add the Ghostty-like macOS glass
+      # frame (NSGlassEffectView) from github:larrasket/emacs-liquid-glass.
+      # frame-transparency (emacs-plus community patch) is the prerequisite: it
+      # introduces ns-background-blur / ns-alpha-elements / ns-transparent-titlebar,
+      # which ns-glass-effect builds on, so it MUST precede ns-glass-effect.
+      # NSGlassEffectView needs the macOS 26 SDK; on older SDKs the patch falls
+      # back to NSVisualEffectView (no true glass).
       emacs = pkgs.emacs-git.overrideAttrs (old: {
         patches = (old.patches or [ ]) ++ [
           ./patches/fix-ns-x-colors.patch
           ./patches/system-appearance.patch
           ./patches/round-undecorated-frame.patch
           ./patches/ns_color_cache_0001.patch
+          ./patches/frame-transparency.patch
+          ./patches/ns-glass-effect.patch
         ];
       });
 
