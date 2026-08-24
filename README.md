@@ -1,51 +1,57 @@
 # darwin-emacs-flake
 
-A flake that provides patched emacs package for **aarch64-darwin** with a stack of NS patches:
+A flake that gives a patched emacs package for **aarch64-darwin**, with this set
+of NS patches:
 
-| Patch | Origin | Effect |
+| Patch | Source | Effect |
 |-------|--------|--------|
-| `fix-ns-x-colors.patch` | emacs-plus | Fixes the NS `x-colors` list (`lisp/term/ns-win.el`) |
-| `system-appearance.patch` | emacs-plus | Adds `ns-system-appearance` + hook so Emacs follows macOS light/dark mode |
-| `round-undecorated-frame.patch` | emacs-plus | Rounded corners on undecorated frames |
-| `ns_color_cache_0001.patch` | emacs-devel | Caches `NSColor` by packed pixel value - avoids a per-glyph allocation + colorspace conversion |
-| `frame-transparency.patch` | emacs-plus (community) | Adds `ns-background-blur` / `ns-alpha-elements` / `ns-transparent-titlebar` frame params via CGS APIs - prerequisite for the glass patch |
-| `ns-glass-effect.patch` | emacs-liquid-glass | Ghostty-like macOS glass frame (`NSGlassEffectView`) via `ns-glass-*` frame params |
+| `fix-ns-x-colors.patch` | emacs-plus | Makes the NS `x-colors` list correct (`lisp/term/ns-win.el`) |
+| `system-appearance.patch` | emacs-plus | Adds `ns-system-appearance` and a hook. Emacs then changes with the macOS light mode and dark mode |
+| `round-undecorated-frame.patch` | emacs-plus | Gives a corner radius to frames that have the `undecorated` parameter |
+| `ns_color_cache_0001.patch` | emacs-devel | Keeps `NSColor` objects in a cache, with the packed pixel value as the key. Emacs then does not make a new object and does not do a colorspace conversion for each glyph |
+| `frame-transparency.patch` | emacs-plus (community) | Adds the `ns-background-blur`, `ns-alpha-elements` and `ns-transparent-titlebar` frame parameters through the CGS APIs |
+| `ns-glass-effect.patch` | emacs-liquid-glass | Gives a Ghostty-like macOS glass frame (`NSGlassEffectView`) through the `ns-glass-*` frame parameters |
 
-The three core emacs-plus patches are vendored from
+The first three emacs-plus patches come from
 [`d12frosted/homebrew-emacs-plus`](https://github.com/d12frosted/homebrew-emacs-plus/tree/master/patches/emacs-31)
-(the `emacs-32` dir symlinks to `emacs-31`). They apply in the order listed
-above; `nsterm.m` / `frame.h` are touched by several, so order is preserved.
+(the `emacs-32` directory is a symlink to `emacs-31`). The flake applies them in
+the sequence of the table. Some of them change `nsterm.m` and `frame.h`, thus
+the sequence must not change.
 
-`ns_color_cache_0001.patch` is from Przemysław Alexander Kamiński's emacs-devel
-post ["[PATCH] [macOS] Add NSColor
+`ns_color_cache_0001.patch` comes from the emacs-devel post of Przemysław
+Alexander Kamiński, ["[PATCH] [macOS] Add NSColor
 cache"](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00515.html).
 
-`frame-transparency.patch` is the community patch by
-[aaratha](https://github.com/aaratha), vendored from
+`frame-transparency.patch` is the community patch of
+[aaratha](https://github.com/aaratha). It comes from
 [`d12frosted/homebrew-emacs-plus`](https://github.com/d12frosted/homebrew-emacs-plus/blob/master/community/patches/frame-transparency/emacs-31.patch).
-`ns-glass-effect.patch` is from
-[`larrasket/emacs-liquid-glass`](https://github.com/larrasket/emacs-liquid-glass/blob/master/patches/ns-glass-effect.patch)
-and **must** be applied after `frame-transparency.patch`, whose
-`ns-background-blur` / `ns-alpha-elements` symbols it builds on. The glass
-effect needs the macOS 26 SDK **and** a macOS 26 deployment target — the patch
-gates itself on `MAC_OS_X_VERSION_MAX_ALLOWED >= 260000`, which
-`AvailabilityMacros.h` derives from the deployment target, not the SDK. Build
-with only the SDK bumped and every glass path is preprocessed away, silently
-falling back to `NSVisualEffectView` (no true glass). So the flake pins both
-`apple-sdk_26` and `darwinMinVersionHook "26.0"`; **the result runs only on
-macOS 26+**.
+`ns-glass-effect.patch` comes from
+[`larrasket/emacs-liquid-glass`](https://github.com/larrasket/emacs-liquid-glass/blob/master/patches/ns-glass-effect.patch).
+It must come after `frame-transparency.patch`, because it uses the
+`ns-background-blur` and `ns-alpha-elements` parameters of that patch.
 
+The macOS 26 SDK **and** a macOS 26 deployment target are necessary for the
+glass effect. The patch uses the condition
+`MAC_OS_X_VERSION_MAX_ALLOWED >= 260000` for each glass path.
+`AvailabilityMacros.h` calculates that value from the deployment target, not
+from the SDK.
+
+If you increase only the SDK version, the preprocessor removes each glass path.
+The build then uses `NSVisualEffectView`, and there is no glass. Thus the flake
+sets the two values `apple-sdk_26` and `darwinMinVersionHook "26.0"`. As a
+result, **the build operates only on macOS 26 or a subsequent version**.
 
 ```
 packages.aarch64-darwin.emacs       # the patched emacs-git (also `.default`)
-packages.aarch64-darwin.emacs-gpu   # experimental Metal GPU backend (see below)
+packages.aarch64-darwin.emacs-gpu   # Metal GPU backend, a test package
 ```
 
-## Glass frame config
+## Glass frame configuration
 
-The `frame-transparency` + `ns-glass-effect` patches only add the frame
-*parameters*; you still have to set them. [`lisp/macos-glass.el`](lisp/macos-glass.el)
-wires them up — load it from your init:
+The `frame-transparency` and `ns-glass-effect` patches add only the frame
+*parameters*. You must set the parameters.
+[`lisp/macos-glass.el`](lisp/macos-glass.el) sets them for you. Load this file
+from your init file:
 
 ```elisp
 (add-to-list 'load-path "/path/to/darwin-emacs-flake/lisp")
@@ -53,17 +59,21 @@ wires them up — load it from your init:
 (macos-glass-set-style 'regular)  ; or 'clear
 ```
 
-It sets the glass parameters on `default-frame-alist` and re-applies them to
-new and `emacsclient`/daemon frames. On an Emacs built **without** the glass
-patch at all it falls back to plain transparency + background blur (which need
-only `frame-transparency`). It detects that by probing a graphic frame with a
-bogus `ns-glass-material` value: the patched C handler signals an error, an
-unpatched Emacs silently stores it. Note the probe cannot tell glass from blur —
-the patch defines `ns-glass-material` and its validation unconditionally, so a
-patched build with the wrong deployment target passes the probe while still
-rendering `NSVisualEffectView`.
+The file sets the glass parameters on `default-frame-alist`. Then it sets them
+again on each new frame, and on each `emacsclient` frame and daemon frame. On an
+Emacs that does not have the glass patch, the file uses transparency and
+background blur. Only `frame-transparency` is necessary for these two effects.
 
-Prefer to inline it? The two presets reduce to these frame parameters:
+The file finds this condition with a probe. It sets an incorrect
+`ns-glass-material` value on a graphic frame. The patched C handler gives an
+error, but an Emacs without the patch stores the value and gives no error. The
+probe cannot show the difference between glass and blur. The patch always
+adds `ns-glass-material`, and it always makes sure that the value is correct.
+Thus a patched build with the incorrect deployment target gives no error in the
+probe, but it shows `NSVisualEffectView`.
+
+You can also write the parameters in your init file. These are the frame
+parameters of the two presets:
 
 ```elisp
 ;; 'regular preset
@@ -80,17 +90,18 @@ Prefer to inline it? The two presets reduce to these frame parameters:
   (set-frame-parameter nil (car p) (cdr p)))
 ```
 
-The native `NSGlassEffectView` material needs the macOS 26 SDK *and* a macOS 26
-deployment target at build time (see above); with either missing the patch
-compiles down to `NSVisualEffectView` (frosted, not glass).
+The macOS 26 SDK *and* a macOS 26 deployment target at build time are necessary
+for the `NSGlassEffectView` material. If one of the two is missing, the patch
+compiles to `NSVisualEffectView`, which gives blur, not glass.
 
 ## Cache
 
-> **Requires macOS 26 or newer.** `emacs` is built at deployment target 26.0 to
-> get the real glass effect (see above), so the cached binary will not launch on
-> earlier macOS. `emacs-gpu` is unaffected — it keeps the nixpkgs default.
+> **macOS 26 or a subsequent version is necessary.** The flake builds `emacs` at
+> deployment target 26.0 to get the glass effect. Thus the binary in the cache
+> does not start on a macOS version before 26. This does not apply to
+> `emacs-gpu`, which keeps the nixpkgs default.
 
-Binary cache lives on cachix:
+The binary cache is on cachix:
 
 ```nix
 nix.settings.substituters = [ "https://snglth.cachix.org" ];
@@ -99,18 +110,21 @@ nix.settings.trusted-public-keys = [
 ];
 ```
 
-## Experimental: Metal GPU backend
+## Metal GPU backend (a test package)
 
-`packages.aarch64-darwin.emacs-gpu` builds [`tanrax/emacs-gpu`](https://github.com/tanrax/emacs-gpu)
-— a full Emacs 31.0.90 fork by Andros Fenollosa adding a Metal GPU display
-backend ([RFC, emacs-devel 2026-06](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00177.html)).
-Because it's a whole fork (not a patch on master), it's built from the fork's
-own source with `--with-mtl` added to the overlay's `emacs-git` recipe, rather
-than stacked onto the patched `emacs` above.
+`packages.aarch64-darwin.emacs-gpu` builds
+[`tanrax/emacs-gpu`](https://github.com/tanrax/emacs-gpu). This is a full Emacs
+31.0.90 fork of Andros Fenollosa that adds a Metal GPU display backend
+([RFC, emacs-devel 2026-06](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00177.html)).
+It is a full fork, not a patch on master. Thus the flake builds it from the
+source of the fork, with `--with-mtl` added to the `emacs-git` recipe of the
+overlay. The flake does not apply it to the patched `emacs`.
 
-Shaders are embedded and compiled at runtime (`newLibraryWithSource:`), so no
-offline Metal toolchain is needed — only the macOS SDK frameworks that
-`--with-mtl` links. It's independent of `emacs`/`.default`; build it explicitly:
+The source includes the shaders, and Emacs compiles them when it operates
+(`newLibraryWithSource:`). Thus a Metal toolchain before the build is not
+necessary. Only the macOS SDK frameworks that `--with-mtl` uses are necessary.
+This package operates independently of `emacs` and `.default`. Build it with
+this command:
 
 ```sh
 nix build .#emacs-gpu -L

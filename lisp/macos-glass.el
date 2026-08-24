@@ -1,25 +1,27 @@
 ;;; macos-glass.el --- Ghostty-like macOS glass frame -*- lexical-binding: t; -*-
 
-;; Enables the liquid-glass frame provided by the `frame-transparency' +
-;; `ns-glass-effect' patches in this flake (see README).  Load it from your
-;; init, e.g.:
+;; This file enables the liquid-glass frame that the `frame-transparency' and
+;; `ns-glass-effect' patches of this flake give (see the README).  Load it
+;; from your init file, for example:
 ;;
 ;;   (add-to-list 'load-path "/path/to/darwin-emacs-flake/lisp")
 ;;   (require 'macos-glass)
 ;;   (macos-glass-set-style 'regular)   ; or 'clear
 ;;
-;; It is a no-op off macOS, and degrades gracefully on an Emacs built WITHOUT
-;; the glass patches: `macos-glass--native-build-p' probes the running binary
-;; and, if the patches are absent, falls back to plain transparency +
-;; background blur (which only need the `frame-transparency' patch).
+;; The file has no effect when Emacs does not operate on macOS.  On an Emacs
+;; built WITHOUT the glass patches, it uses transparency and background blur.
+;; Only the `frame-transparency' patch is necessary for these two effects.
+;; `macos-glass--native-build-p' does a probe of the binary that operates, to
+;; find this condition.
 ;;
-;; That probe detects the PATCH, not the effect.  Real `NSGlassEffectView'
-;; additionally requires that Emacs was compiled against the macOS 26 SDK with
-;; a macOS 26 deployment target; without both, the patch is still present (and
-;; still validates these parameters) but renders `NSVisualEffectView' blur.
-;; Nothing observable from Lisp distinguishes the two, so on such a build this
-;; file picks the glass values and you get blur at a glass-tuned alpha.  See
-;; the README; the flake's `emacs' package builds with both.
+;; That probe finds the PATCH, not the effect.  An Emacs compiled against the
+;; macOS 26 SDK with a macOS 26 deployment target is also necessary for a
+;; `NSGlassEffectView' frame.  If one of the two is missing, the patch stays
+;; in the build, and it continues to make sure that these parameters are
+;; correct.  But it shows `NSVisualEffectView' blur.  Lisp cannot show a
+;; difference between the two.  Thus, on such a build, this file selects the
+;; glass values and you get blur at an alpha tuned for glass.  See the README.
+;; The `emacs' package of the flake builds with the two conditions.
 
 ;;; Code:
 
@@ -29,46 +31,48 @@
   :prefix "macos-glass-")
 
 (defcustom macos-glass-style 'regular
-  "Active glass preset.  One of the keys in `macos-glass-presets'."
+  "The active glass preset.  One of the keys in `macos-glass-presets'."
   :type 'symbol
   :group 'macos-glass)
 
 (defcustom macos-glass-transparent-titlebar t
-  "Whether to make the titlebar transparent (`ns-transparent-titlebar')."
+  "Non-nil makes the titlebar transparent (`ns-transparent-titlebar')."
   :type 'boolean
   :group 'macos-glass)
 
 (defcustom macos-glass-alpha-elements '(ns-alpha-all)
-  "Which frame elements render with transparency (`ns-alpha-elements').
+  "The frame elements that show with transparency (`ns-alpha-elements').
 
-NOTE: `ns-alpha-glyphs' is all-or-nothing.  The patch forces EVERY glyph
-background fill to the frame's `alpha-background', overriding each face's
-own alpha.  So you cannot keep default text transparent while making the
-selection/`region'/`hl-line' opaque by tweaking this list:
+NOTE: `ns-alpha-glyphs' applies to all glyphs or to no glyph.  The patch
+sets the background fill of EVERY glyph to the `alpha-background' of the
+frame, and it replaces the alpha of each face.  Thus a change to this list
+cannot make the default text transparent and the selection, `region' and
+`hl-line' opaque.  These are the two conditions:
 
-  - with `ns-alpha-glyphs'  -> default text is glassy, but selection
-    highlights are also forced near-invisible at a low `alpha-background';
-  - without `ns-alpha-glyphs' -> selection is opaque, but so is ALL text
-    (every glyph gets an opaque background box).
+  - With `ns-alpha-glyphs', the default text is glassy, but a low
+    `alpha-background' also makes the selection almost invisible.
+  - Without `ns-alpha-glyphs', the selection is opaque, but ALL text is
+    also opaque, because each glyph gets an opaque background box.
 
-To keep the glass look AND a visible selection, leave this at
-`(ns-alpha-all)' and raise `alpha-background' via
-`macos-glass-min-readable-alpha' instead.
+To keep the glass effect AND a selection that you can see, keep this value
+at `(ns-alpha-all)'.  Then increase `alpha-background' with
+`macos-glass-min-readable-alpha'.
 
-Available elements: `ns-alpha-all', `ns-alpha-default' (default face
-background), `ns-alpha-fringe', `ns-alpha-box', `ns-alpha-stipple',
-`ns-alpha-relief', `ns-alpha-glyphs'."
+These are the available elements: `ns-alpha-all', `ns-alpha-default' (the
+background of the default face), `ns-alpha-fringe', `ns-alpha-box',
+`ns-alpha-stipple', `ns-alpha-relief', `ns-alpha-glyphs'."
   :type '(repeat symbol)
   :group 'macos-glass)
 
 (defcustom macos-glass-min-readable-alpha 0.12
-  "Lower bound applied to each preset's `alpha-background'.
+  "Minimum limit for the `alpha-background' of each preset.
 
-Because `ns-alpha-glyphs' ties selection/`region'/`hl-line' visibility to
-`alpha-background' (see `macos-glass-alpha-elements'), a near-zero alpha
-like 0.01 makes those highlights invisible.  Clamping up to this value
-keeps them legible while staying translucent.  Set to 0.0 to honour the
-preset's raw alpha (maximum glass, faint selection)."
+`ns-alpha-glyphs' connects the selection, `region' and `hl-line' to
+`alpha-background' (see `macos-glass-alpha-elements').  Thus an alpha near
+to zero, such as 0.01, makes these highlights invisible.  An increase to
+this limit keeps them legible and translucent.  Set this value to 0.0 to
+keep the alpha of the preset, which gives maximum glass and a selection
+that is difficult to see."
   :type 'number
   :group 'macos-glass)
 
@@ -95,35 +99,41 @@ preset's raw alpha (maximum glass, faint selection)."
      :fallback-blur 40))
   "Built-in glass presets.
 Each entry maps a style name to a plist of frame-parameter values.
-The `:fallback-*' values are used on an Emacs built without the glass
-patches (plain transparency + blur instead of native glass).")
+An Emacs built without the glass patches uses the `:fallback-*' values.
+Such an Emacs shows transparency and blur, not `NSGlassEffectView' glass.")
 
 (defun macos-glass--preset (style)
-  "Return the plist for STYLE, or signal an error."
+  "Return the plist for STYLE.
+Signal an error if STYLE is unknown."
   (or (alist-get style macos-glass-presets)
       (user-error "Unknown glass style: %s" style)))
 
 (defvar macos-glass--native-build-cache 'unknown
-  "Memoized result of `macos-glass--native-build-p'.")
+  "The cached result of `macos-glass--native-build-p'.")
 
 (defun macos-glass--native-build-p ()
-  "Return non-nil if the running Emacs has the `ns-glass-effect' patch.
-Probes at runtime: the patched C handler signals an error for an
-unknown `ns-glass-material' value, whereas an unpatched Emacs silently
-stores any value.  This works regardless of how Emacs was launched
-\(direct binary, daemon, or `-with-packages' wrapper), unlike inspecting
-the executable on disk.  Requires a graphic frame; the result is cached.
+  "Return non-nil if the Emacs that operates has the `ns-glass-effect' patch.
+This function does a probe when Emacs operates.  The patched C handler
+gives an error for an unknown `ns-glass-material' value, but an Emacs
+without the patch stores any value and gives no error.  An examination of
+the executable file on the disk does not work for each start method.  This
+probe works for a direct binary, a daemon and a `-with-packages' wrapper.
+A graphic frame is necessary for the probe, and the probe keeps the result
+in a cache.
 
-This does NOT mean native glass is rendered.  The patch validates
-`ns-glass-material' unconditionally, but gates the actual
-`NSGlassEffectView' code on MAC_OS_X_VERSION_MAX_ALLOWED >= 260000 -- a
-build-time constant this probe cannot observe.  See the Commentary."
+A non-nil result does NOT show that Emacs gives `NSGlassEffectView' glass.
+The patch always makes sure that `ns-glass-material' is correct, but it
+uses the condition MAC_OS_X_VERSION_MAX_ALLOWED >= 260000 for the
+`NSGlassEffectView' code.  That is a constant from the build, and this
+probe cannot see it.  See the Commentary."
   (cond
-   ;; Already determined on a real graphic frame.
+   ;; The probe operated on a graphic frame before this time.
    ((not (eq macos-glass--native-build-cache 'unknown))
     macos-glass--native-build-cache)
-   ;; Cannot probe yet (non-darwin, or a daemon/TTY with no GUI frame).
-   ;; Return nil but DO NOT cache, so the first graphic frame re-probes.
+   ;; The probe cannot operate at this time, because Emacs is not on darwin,
+   ;; or it is a daemon or a TTY with no GUI frame.  Return nil and DO NOT
+   ;; keep the result in the cache, thus the first graphic frame does the
+   ;; probe again.
    ((not (and (eq system-type 'darwin) (display-graphic-p)))
     nil)
    (t
@@ -134,15 +144,17 @@ build-time constant this probe cannot observe.  See the Commentary."
                     (progn
                       (set-frame-parameter
                        nil 'ns-glass-material 'macos-glass--probe)
-                      ;; No error => unpatched: it just stored the value.
+                      ;; No error shows that Emacs does not have the patch,
+                      ;; because it only stored the value.
                       nil)
                   (error t))
               (set-frame-parameter nil 'ns-glass-material saved)))))))
 
 (defun macos-glass--frame-parameters (style)
-  "Compute the frame parameter alist for STYLE.
-On a non-glass build, only transparency/blur parameters are returned,
-using the preset's fallback values."
+  "Calculate the frame parameter alist for STYLE.
+On a build without glass, this function returns only the transparency
+parameters and the blur parameters, with the `:fallback-*' values of the
+preset."
   (let* ((preset (macos-glass--preset style))
          (native (macos-glass--native-build-p)))
     (append
@@ -165,18 +177,21 @@ using the preset's fallback values."
          (ns-glass-corner-radius . ,(plist-get preset :corner-radius)))))))
 
 (defun macos-glass--apply (&optional frame)
-  "Apply the active glass style to FRAME (defaults to the selected frame)."
+  "Apply the active glass style to FRAME.
+FRAME defaults to the selected frame."
   (with-selected-frame (or frame (selected-frame))
     (pcase-dolist (`(,param . ,value)
                    (macos-glass--frame-parameters macos-glass-style))
       (set-frame-parameter nil param value))))
 
 (defun macos-glass--merge-default-frame-alist (parameters)
-  "Install PARAMETERS into `default-frame-alist', replacing existing keys.
-Shared by `macos-glass-enable' and `macos-glass-set-style' so both install
-the same way.  Prefer this to `add-to-list', which prepends without
-dropping a pre-existing entry for the same key: the new value does win the
-`assq' lookup, but the stale cons accumulates on every re-enable."
+  "Install PARAMETERS into `default-frame-alist' and replace the same keys.
+`macos-glass-enable' and `macos-glass-set-style' use this function, thus
+the two functions install in the same way.  Use this function, not
+`add-to-list'.  `add-to-list' puts the new value first, but it keeps an
+entry that is already there for the same key.  The `assq' operation finds
+the new value, but the old cons stays, and one more cons collects at each
+subsequent enable."
   (setq default-frame-alist
         (append parameters
                 (seq-remove (lambda (p) (assq (car p) parameters))
@@ -184,7 +199,7 @@ dropping a pre-existing entry for the same key: the new value does win the
 
 ;;;###autoload
 (defun macos-glass-set-style (style)
-  "Switch to glass preset STYLE and apply it to all frames."
+  "Change to the glass preset STYLE and apply it to all frames."
   (interactive
    (list (intern
           (completing-read
@@ -198,20 +213,22 @@ dropping a pre-existing entry for the same key: the new value does win the
 
 ;;;###autoload
 (defun macos-glass-enable ()
-  "Enable the glass frame and ensure new/daemon frames inherit it."
+  "Enable the glass frame.
+New frames and daemon frames also get the glass parameters."
   (interactive)
   (when (eq system-type 'darwin)
     (macos-glass--merge-default-frame-alist
      (macos-glass--frame-parameters macos-glass-style))
     (add-hook 'after-make-frame-functions #'macos-glass--apply)
-    ;; Non-daemon GUI startup fires neither hook above for the initial frame.
+    ;; At a GUI start without a daemon, the first frame does not fire the two
+    ;; hooks `after-make-frame-functions' and `window-setup-hook'.
     (if (daemonp)
         nil
       (add-hook 'window-setup-hook #'macos-glass--apply))
     (when (display-graphic-p)
       (macos-glass--apply))))
 
-;; Enable on load when running on macOS.
+;; Enable at load time when Emacs operates on macOS.
 (when (eq system-type 'darwin)
   (macos-glass-enable))
 

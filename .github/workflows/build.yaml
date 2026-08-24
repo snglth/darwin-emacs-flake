@@ -8,11 +8,11 @@ on:
 
 jobs:
   build:
-    # Apple Silicon (arm64) runner — required to build aarch64-darwin.
-    # Free minutes on public repositories.
+    # An Apple Silicon (arm64) runner is necessary to build aarch64-darwin.
+    # Public repositories get free minutes on this runner.
     runs-on: macos-26
     strategy:
-      # emacs-gpu is experimental; don't let it cancel the emacs build.
+      # emacs-gpu is a test package.  It must not stop the emacs build.
       fail-fast: false
       matrix:
         package: [emacs, emacs-gpu]
@@ -27,9 +27,10 @@ jobs:
       - uses: cachix/cachix-action@v17
         with:
           name: snglth
-          # Repo secret: a Cachix auth token with write access to the cache.
+          # This repo secret is a Cachix auth token with write access to the
+          # cache.
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      # Building the package automatically pushes it (and its deps) to the cache
-      # via cachix-action's post-build hook.
+      # The post-build hook of cachix-action pushes the package and the
+      # packages that it uses to the cache after each build.
       - run: nix build .#${{ matrix.package }} --print-build-logs
