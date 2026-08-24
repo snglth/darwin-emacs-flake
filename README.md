@@ -27,8 +27,13 @@ cache"](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00515.html).
 [`larrasket/emacs-liquid-glass`](https://github.com/larrasket/emacs-liquid-glass/blob/master/patches/ns-glass-effect.patch)
 and **must** be applied after `frame-transparency.patch`, whose
 `ns-background-blur` / `ns-alpha-elements` symbols it builds on. The glass
-effect needs the macOS 26 SDK; on older SDKs the patch falls back to
-`NSVisualEffectView` (no true glass).
+effect needs the macOS 26 SDK **and** a macOS 26 deployment target — the patch
+gates itself on `MAC_OS_X_VERSION_MAX_ALLOWED >= 260000`, which
+`AvailabilityMacros.h` derives from the deployment target, not the SDK. Build
+with only the SDK bumped and every glass path is preprocessed away, silently
+falling back to `NSVisualEffectView` (no true glass). So the flake pins both
+`apple-sdk_26` and `darwinMinVersionHook "26.0"`; **the result runs only on
+macOS 26+**.
 
 
 ```
@@ -50,8 +55,13 @@ wires them up — load it from your init:
 
 It sets the glass parameters on `default-frame-alist` and re-applies them to
 new and `emacsclient`/daemon frames. On an Emacs built **without** the glass
-patches it detects the missing `ns-glass-material` symbol and falls back to
-plain transparency + background blur (which need only `frame-transparency`).
+patch at all it falls back to plain transparency + background blur (which need
+only `frame-transparency`). It detects that by probing a graphic frame with a
+bogus `ns-glass-material` value: the patched C handler signals an error, an
+unpatched Emacs silently stores it. Note the probe cannot tell glass from blur —
+the patch defines `ns-glass-material` and its validation unconditionally, so a
+patched build with the wrong deployment target passes the probe while still
+rendering `NSVisualEffectView`.
 
 Prefer to inline it? The two presets reduce to these frame parameters:
 
@@ -70,10 +80,15 @@ Prefer to inline it? The two presets reduce to these frame parameters:
   (set-frame-parameter nil (car p) (cdr p)))
 ```
 
-The native `NSGlassEffectView` material needs the macOS 26 SDK at build time;
-otherwise the patch falls back to `NSVisualEffectView` (frosted, not glass).
+The native `NSGlassEffectView` material needs the macOS 26 SDK *and* a macOS 26
+deployment target at build time (see above); with either missing the patch
+compiles down to `NSVisualEffectView` (frosted, not glass).
 
 ## Cache
+
+> **Requires macOS 26 or newer.** `emacs` is built at deployment target 26.0 to
+> get the real glass effect (see above), so the cached binary will not launch on
+> earlier macOS. `emacs-gpu` is unaffected — it keeps the nixpkgs default.
 
 Binary cache lives on cachix:
 

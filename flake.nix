@@ -35,9 +35,26 @@
       # frame-transparency (emacs-plus community patch) is the prerequisite: it
       # introduces ns-background-blur / ns-alpha-elements / ns-transparent-titlebar,
       # which ns-glass-effect builds on, so it MUST precede ns-glass-effect.
-      # NSGlassEffectView needs the macOS 26 SDK; on older SDKs the patch falls
-      # back to NSVisualEffectView (no true glass).
-      emacs = pkgs.emacs-git.overrideAttrs (old: {
+      # NSGlassEffectView needs the macOS 26 SDK *and* a 26.0 deployment target.
+      # The trap: the patch gates every glass path on
+      # MAC_OS_X_VERSION_MAX_ALLOWED >= 260000, but AvailabilityMacros.h defines
+      # that as max(MAC_OS_X_VERSION_MIN_REQUIRED, 140000) — the *deployment
+      # target*, not the SDK. nixpkgs' default darwinMinVersion = "14.0" pins it
+      # at 140000, so bumping the SDK alone preprocesses the glass branches away
+      # and silently falls back to NSVisualEffectView blur, with a green build.
+      # Hence darwinMinVersionHook "26.0". Both SDK mechanisms are needed, for
+      # different reasons: buildInputs is what the apple-sdk setup hook reads to
+      # pick the compile SDK (it takes the highest among buildInputs), while
+      # .override feeds the generated native-comp-driver-options patch, which
+      # otherwise hardcodes a stale 14.4 SDK path into the runtime closure.
+      # apple-sdk_26 is pinned explicitly, not looked up dynamically: 260000 is a
+      # floor, and the weekly flake.lock bump must not swap the compile SDK.
+      # Consequence: the resulting binaries require macOS 26+ to run.
+      emacs = (pkgs.emacs-git.override { apple-sdk = pkgs.apple-sdk_26; }).overrideAttrs (old: {
+        buildInputs = (old.buildInputs or [ ]) ++ [
+          pkgs.apple-sdk_26
+          (pkgs.darwinMinVersionHook "26.0")
+        ];
         patches = (old.patches or [ ]) ++ [
           ./patches/fix-ns-x-colors.patch
           ./patches/system-appearance.patch

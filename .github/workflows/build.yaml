@@ -10,7 +10,7 @@ jobs:
   build:
     # Apple Silicon (arm64) runner — required to build aarch64-darwin.
     # Free minutes on public repositories.
-    runs-on: macos-14
+    runs-on: macos-26
     strategy:
       # emacs-gpu is experimental; don't let it cancel the emacs build.
       fail-fast: false
