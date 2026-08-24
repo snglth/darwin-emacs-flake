@@ -9,11 +9,17 @@
 ;;   (macos-glass-set-style 'regular)   ; or 'clear
 ;;
 ;; It is a no-op off macOS, and degrades gracefully on an Emacs built WITHOUT
-;; the glass patches: it detects whether the running binary exports the
-;; `ns-glass-material' symbol and, if not, falls back to plain
-;; transparency + background blur (which only need the `frame-transparency'
-;; patch).  The native glass effect itself also needs the macOS 26 SDK at
-;; build time.
+;; the glass patches: `macos-glass--native-build-p' probes the running binary
+;; and, if the patches are absent, falls back to plain transparency +
+;; background blur (which only need the `frame-transparency' patch).
+;;
+;; That probe detects the PATCH, not the effect.  Real `NSGlassEffectView'
+;; additionally requires that Emacs was compiled against the macOS 26 SDK with
+;; a macOS 26 deployment target; without both, the patch is still present (and
+;; still validates these parameters) but renders `NSVisualEffectView' blur.
+;; Nothing observable from Lisp distinguishes the two, so on such a build this
+;; file picks the glass values and you get blur at a glass-tuned alpha.  See
+;; the README; the flake's `emacs' package builds with both.
 
 ;;; Code:
 
@@ -101,12 +107,17 @@ patches (plain transparency + blur instead of native glass).")
   "Memoized result of `macos-glass--native-build-p'.")
 
 (defun macos-glass--native-build-p ()
-  "Return non-nil if the running Emacs honors the glass frame parameters.
+  "Return non-nil if the running Emacs has the `ns-glass-effect' patch.
 Probes at runtime: the patched C handler signals an error for an
 unknown `ns-glass-material' value, whereas an unpatched Emacs silently
 stores any value.  This works regardless of how Emacs was launched
 \(direct binary, daemon, or `-with-packages' wrapper), unlike inspecting
-the executable on disk.  Requires a graphic frame; the result is cached."
+the executable on disk.  Requires a graphic frame; the result is cached.
+
+This does NOT mean native glass is rendered.  The patch validates
+`ns-glass-material' unconditionally, but gates the actual
+`NSGlassEffectView' code on MAC_OS_X_VERSION_MAX_ALLOWED >= 260000 -- a
+build-time constant this probe cannot observe.  See the Commentary."
   (cond
    ;; Already determined on a real graphic frame.
    ((not (eq macos-glass--native-build-cache 'unknown))
@@ -160,6 +171,17 @@ using the preset's fallback values."
                    (macos-glass--frame-parameters macos-glass-style))
       (set-frame-parameter nil param value))))
 
+(defun macos-glass--merge-default-frame-alist (parameters)
+  "Install PARAMETERS into `default-frame-alist', replacing existing keys.
+Shared by `macos-glass-enable' and `macos-glass-set-style' so both install
+the same way.  Prefer this to `add-to-list', which prepends without
+dropping a pre-existing entry for the same key: the new value does win the
+`assq' lookup, but the stale cons accumulates on every re-enable."
+  (setq default-frame-alist
+        (append parameters
+                (seq-remove (lambda (p) (assq (car p) parameters))
+                            default-frame-alist))))
+
 ;;;###autoload
 (defun macos-glass-set-style (style)
   "Switch to glass preset STYLE and apply it to all frames."
@@ -171,10 +193,7 @@ using the preset's fallback values."
            nil t nil nil (symbol-name macos-glass-style)))))
   (setq macos-glass-style style)
   (let ((parameters (macos-glass--frame-parameters style)))
-    (setq default-frame-alist
-          (append parameters
-                  (seq-remove (lambda (p) (assq (car p) parameters))
-                              default-frame-alist)))
+    (macos-glass--merge-default-frame-alist parameters)
     (modify-all-frames-parameters parameters)))
 
 ;;;###autoload
@@ -182,8 +201,8 @@ using the preset's fallback values."
   "Enable the glass frame and ensure new/daemon frames inherit it."
   (interactive)
   (when (eq system-type 'darwin)
-    (dolist (parameter (macos-glass--frame-parameters macos-glass-style))
-      (add-to-list 'default-frame-alist parameter))
+    (macos-glass--merge-default-frame-alist
+     (macos-glass--frame-parameters macos-glass-style))
     (add-hook 'after-make-frame-functions #'macos-glass--apply)
     ;; Non-daemon GUI startup fires neither hook above for the initial frame.
     (if (daemonp)
