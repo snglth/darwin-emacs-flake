@@ -36,6 +36,43 @@ packages.aarch64-darwin.emacs       # the patched emacs-git (also `.default`)
 packages.aarch64-darwin.emacs-gpu   # experimental Metal GPU backend (see below)
 ```
 
+## Glass frame config
+
+The `frame-transparency` + `ns-glass-effect` patches only add the frame
+*parameters*; you still have to set them. [`lisp/macos-glass.el`](lisp/macos-glass.el)
+wires them up — load it from your init:
+
+```elisp
+(add-to-list 'load-path "/path/to/darwin-emacs-flake/lisp")
+(require 'macos-glass)            ; auto-enables on macOS
+(macos-glass-set-style 'regular)  ; or 'clear
+```
+
+It sets the glass parameters on `default-frame-alist` and re-applies them to
+new and `emacsclient`/daemon frames. On an Emacs built **without** the glass
+patches it detects the missing `ns-glass-material` symbol and falls back to
+plain transparency + background blur (which need only `frame-transparency`).
+
+Prefer to inline it? The two presets reduce to these frame parameters:
+
+```elisp
+;; 'regular preset
+(dolist (p '((ns-transparent-titlebar  . t)
+             (alpha-background         . 0.01)
+             (ns-background-blur       . 0)
+             (ns-alpha-elements        . (ns-alpha-all))
+             (ns-glass-material        . regular)   ; or 'clear
+             (ns-glass-tint-opacity    . 0.05)
+             (ns-glass-saturation      . 1.4)
+             (ns-glass-inactive-opacity . 0.05)
+             (ns-glass-corner-radius   . 2)))
+  (add-to-list 'default-frame-alist p)
+  (set-frame-parameter nil (car p) (cdr p)))
+```
+
+The native `NSGlassEffectView` material needs the macOS 26 SDK at build time;
+otherwise the patch falls back to `NSVisualEffectView` (frosted, not glass).
+
 ## Cache
 
 Binary cache lives on cachix:
