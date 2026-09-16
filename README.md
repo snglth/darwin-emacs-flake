@@ -29,6 +29,10 @@ cache"](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00515.html).
 [`larrasket/emacs-liquid-glass`](https://github.com/larrasket/emacs-liquid-glass/blob/master/patches/ns-glass-effect.patch).
 It must come after `frame-transparency.patch`, because it uses the
 `ns-background-blur` and `ns-alpha-elements` parameters of that patch.
+This flake adds one change to that patch. A transparent titlebar shows the
+raw glass, but the content view paints the frame background over the glass at
+`alpha-background`. The change fills the titlebar strip with the same color at
+the same alpha. Without it, the titlebar shows as a lighter band.
 
 The macOS 26 SDK **and** a macOS 26 deployment target are necessary for the
 glass effect. The patch uses the condition

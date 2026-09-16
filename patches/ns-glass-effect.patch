@@ -1,8 +1,8 @@
-diff --git a/src/frame.c b/src/frame.c
-index 704b510d291..e3d2b1013a7 100644
---- a/src/frame.c
-+++ b/src/frame.c
-@@ -1210,6 +1210,11 @@ make_frame (bool mini_p)
+diff --git c/src/frame.c w/src/frame.c
+index 9d467a0..126903c 100644
+--- c/src/frame.c
++++ w/src/frame.c
+@@ -1211,6 +1211,11 @@ make_frame (bool mini_p)
    f->ns_appearance = ns_appearance_system_default;
    f->ns_transparent_titlebar = false;
    f->ns_background_blur = 0;
@@ -14,7 +14,7 @@ index 704b510d291..e3d2b1013a7 100644
  #endif
  #endif
    f->select_mini_window_flag = false;
-@@ -4886,6 +4891,11 @@ static const struct frame_parm_table frame_parms[] =
+@@ -4888,6 +4893,11 @@ static const struct frame_parm_table frame_parms[] =
    {"ns-transparent-titlebar",	SYMBOL_INDEX (Qns_transparent_titlebar)},
    {"ns-background-blur",	SYMBOL_INDEX (Qns_background_blur)},
    {"ns-alpha-elements",	SYMBOL_INDEX (Qns_alpha_elements)},
@@ -26,7 +26,7 @@ index 704b510d291..e3d2b1013a7 100644
  #endif
  };
  
-@@ -7323,6 +7333,11 @@ syms_of_frame (void)
+@@ -7327,6 +7337,11 @@ syms_of_frame (void)
    DEFSYM (Qns_transparent_titlebar, "ns-transparent-titlebar");
    DEFSYM (Qns_background_blur, "ns-background-blur");
    DEFSYM (Qns_alpha_elements, "ns-alpha-elements");
@@ -38,11 +38,11 @@ index 704b510d291..e3d2b1013a7 100644
  #endif
  
    DEFSYM (Qalpha, "alpha");
-diff --git a/src/frame.h b/src/frame.h
-index f918d1fdbd2..627716f22b6 100644
---- a/src/frame.h
-+++ b/src/frame.h
-@@ -737,6 +737,11 @@ struct frame
+diff --git c/src/frame.h w/src/frame.h
+index 98e8d03..d1e840a 100644
+--- c/src/frame.h
++++ w/src/frame.h
+@@ -741,6 +741,11 @@ struct frame
    enum ns_appearance_type ns_appearance;
    bool_bf ns_transparent_titlebar;
    int ns_background_blur;
@@ -54,7 +54,7 @@ index f918d1fdbd2..627716f22b6 100644
  #endif
  
  #ifdef HAVE_TEXT_CONVERSION
-@@ -1259,6 +1264,11 @@ FRAME_PARENT_FRAME (struct frame *f)
+@@ -1264,6 +1269,11 @@ FRAME_PARENT_FRAME (struct frame *f)
  #define FRAME_NS_APPEARANCE(f) ((f)->ns_appearance)
  #define FRAME_NS_TRANSPARENT_TITLEBAR(f) ((f)->ns_transparent_titlebar)
  #define FRAME_NS_BACKGROUND_BLUR(f) ((f)->ns_background_blur)
@@ -66,10 +66,10 @@ index f918d1fdbd2..627716f22b6 100644
  #endif
  #else /* not HAVE_WINDOW_SYSTEM */
  #define FRAME_OVERRIDE_REDIRECT(f) ((void) (f), 0)
-diff --git a/src/nsfns.m b/src/nsfns.m
-index ee872b73123..2c95ef11a20 100644
---- a/src/nsfns.m
-+++ b/src/nsfns.m
+diff --git c/src/nsfns.m w/src/nsfns.m
+index 96d457f..877700a 100644
+--- c/src/nsfns.m
++++ w/src/nsfns.m
 @@ -320,6 +320,7 @@ Turn the input menu (an NSMenu) into a lisp list for tracking on lisp side.
            [[view window] setOpaque: YES];
  #ifdef NS_IMPL_COCOA
@@ -86,7 +86,7 @@ index ee872b73123..2c95ef11a20 100644
  #endif
  }
  
-@@ -1154,6 +1156,11 @@ Turn the input menu (an NSMenu) into a lisp list for tracking on lisp side.
+@@ -1155,6 +1157,11 @@ Turn the input menu (an NSMenu) into a lisp list for tracking on lisp side.
    ns_set_transparent_titlebar,
    ns_set_background_blur,
    NULL,
@@ -98,7 +98,7 @@ index ee872b73123..2c95ef11a20 100644
  #endif
  };
  
-@@ -1464,6 +1471,16 @@ Turn the input menu (an NSMenu) into a lisp list for tracking on lisp side.
+@@ -1470,6 +1477,16 @@ Turn the input menu (an NSMenu) into a lisp list for tracking on lisp side.
                           NULL, NULL, RES_TYPE_NUMBER);
    gui_default_parameter (f, parms, Qns_alpha_elements, Qnil,
                           NULL, NULL, RES_TYPE_SYMBOL);
@@ -115,29 +115,31 @@ index ee872b73123..2c95ef11a20 100644
  #endif
  
    parent_frame = gui_display_get_arg (dpyinfo, parms, Qparent_frame, NULL, NULL,
-diff --git a/src/nsterm.h b/src/nsterm.h
-index bb95cde12f6..a83e54eb2e5 100644
---- a/src/nsterm.h
-+++ b/src/nsterm.h
-@@ -936,6 +936,8 @@ struct ns_output
+diff --git c/src/nsterm.h w/src/nsterm.h
+index aa5a14c..d426490 100644
+--- c/src/nsterm.h
++++ w/src/nsterm.h
+@@ -936,6 +936,9 @@ struct ns_output
  {
  #ifdef __OBJC__
    EmacsView *view;
 +  NSView *glass_effect_view;
 +  NSView *glass_tint_overlay;
++  NSView *glass_titlebar_tint;
    id miniimage;
    NSColor *cursor_color;
    NSColor *foreground_color;
-@@ -946,6 +948,8 @@ struct ns_output
+@@ -946,6 +949,9 @@ struct ns_output
    EmacsToolbar *toolbar;
  #else
    void *view;
 +  void *glass_effect_view;
 +  void *glass_tint_overlay;
++  void *glass_titlebar_tint;
    void *miniimage;
    void *cursor_color;
    void *foreground_color;
-@@ -1245,6 +1249,18 @@ extern void ns_set_transparent_titlebar (struct frame *f,
+@@ -1248,6 +1254,18 @@ extern void ns_set_transparent_titlebar (struct frame *f,
  extern void ns_set_background_blur (struct frame *f, Lisp_Object new_value,
                                      Lisp_Object old_value);
  extern void ns_update_background_blur (struct frame *f);
@@ -156,10 +158,10 @@ index bb95cde12f6..a83e54eb2e5 100644
  extern bool ns_alpha_element_enabled (struct frame *f, Lisp_Object element);
  #endif
  extern int ns_select (int nfds, fd_set *readfds, fd_set *writefds,
-diff --git a/src/nsterm.m b/src/nsterm.m
-index 4f912f249dc..1edc8c0b812 100644
---- a/src/nsterm.m
-+++ b/src/nsterm.m
+diff --git c/src/nsterm.m w/src/nsterm.m
+index 3dccf17..d047030 100644
+--- c/src/nsterm.m
++++ w/src/nsterm.m
 @@ -72,6 +72,7 @@ Updated by Christian Limpach (chris@nice.ch)
  #include "macfont.h"
  #include <Carbon/Carbon.h>
@@ -176,7 +178,7 @@ index 4f912f249dc..1edc8c0b812 100644
  #endif
  
  /* The last known monitor attributes list.  */
-@@ -1777,6 +1779,10 @@ Hide the window (X11 semantics)
+@@ -1845,6 +1847,10 @@ Hide the window (X11 semantics)
    if (f->output_data.ns->miniimage != nil)
      [f->output_data.ns->miniimage release];
  
@@ -187,7 +189,7 @@ index 4f912f249dc..1edc8c0b812 100644
    [[view window] close];
    [view removeFromSuperview];
    [view release];
-@@ -2171,6 +2177,357 @@ Hide the window (X11 semantics)
+@@ -2302,6 +2308,400 @@ Hide the window (X11 semantics)
  #endif /* MAC_OS_X_VERSION_MAX_ALLOWED >= 101000 */
  }
  
@@ -320,6 +322,12 @@ index 4f912f249dc..1edc8c0b812 100644
 +      f->output_data.ns->glass_tint_overlay = nil;
 +    }
 +
++  if (f->output_data.ns->glass_titlebar_tint != nil)
++    {
++      [f->output_data.ns->glass_titlebar_tint removeFromSuperview];
++      f->output_data.ns->glass_titlebar_tint = nil;
++    }
++
 +  if (f->output_data.ns->glass_effect_view != nil)
 +    {
 +      [f->output_data.ns->glass_effect_view removeFromSuperview];
@@ -362,6 +370,10 @@ index 4f912f249dc..1edc8c0b812 100644
 +  NSView *relative_view;
 +  NSView *effect_view;
 +  NSView *overlay_view;
++  NSView *titlebar_view;
++  NSRect bounds;
++  NSRect content;
++  NSRect strip;
 +  NSColor *base_color;
 +  NSColor *overlay_color;
 +  CGFloat tint_opacity;
@@ -481,6 +493,39 @@ index 4f912f249dc..1edc8c0b812 100644
 +    inactive_opacity = ns_glass_color_is_light (base_color) ? 0.35 : 0.85;
 +  [overlay_view setAlphaValue:[window isKeyWindow] ? 0.0 : inactive_opacity];
 +
++  /* A transparent titlebar shows the raw glass, but the content view
++     paints the frame background at alpha_background over the glass.  Fill
++     the strip of the container above the content view with the same color
++     at the same alpha, so no lighter band shows at the top.  */
++  titlebar_view = f->output_data.ns->glass_titlebar_tint;
++  if (titlebar_view == nil)
++    {
++      titlebar_view = [[NSView alloc] initWithFrame:NSZeroRect];
++      [titlebar_view setWantsLayer:YES];
++      f->output_data.ns->glass_titlebar_tint = titlebar_view;
++      [container addSubview:titlebar_view positioned:NSWindowAbove
++                 relativeTo:overlay_view];
++      [titlebar_view release];
++    }
++
++  bounds = [container bounds];
++  content = [relative_view frame];
++  if ([container isFlipped])
++    {
++      strip = NSMakeRect (NSMinX (bounds), NSMinY (bounds), NSWidth (bounds),
++                          fmax (0.0, NSMinY (content) - NSMinY (bounds)));
++      [titlebar_view setAutoresizingMask:NSViewWidthSizable | NSViewMaxYMargin];
++    }
++  else
++    {
++      strip = NSMakeRect (NSMinX (bounds), NSMaxY (content), NSWidth (bounds),
++                          fmax (0.0, NSMaxY (bounds) - NSMaxY (content)));
++      [titlebar_view setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
++    }
++  [titlebar_view setFrame:strip];
++  titlebar_view.layer.backgroundColor
++    = [[base_color colorWithAlphaComponent:f->alpha_background] CGColor];
++
 +  [window setOpaque:NO];
 +}
 +
@@ -545,7 +590,7 @@ index 4f912f249dc..1edc8c0b812 100644
  static void
  ns_apply_background_blur (struct frame *f)
  {
-@@ -8583,6 +8940,8 @@ - (void)windowDidBecomeKey      /* for direct calls */
+@@ -8820,6 +9220,8 @@ - (void)windowDidBecomeKey      /* for direct calls */
  
  #ifdef NS_IMPL_COCOA
    EmacsView *view = FRAME_NS_VIEW (emacsframe);
@@ -554,7 +599,7 @@ index 4f912f249dc..1edc8c0b812 100644
    /* Make sure we have focus and the timer isn't already scheduled.  */
    if (self.window.firstResponder == view
        && !ns_deferred_UAZoomChangeFocus_timer)
-@@ -8660,6 +9019,9 @@ - (void)windowDidResignKey: (NSNotification *)notification
+@@ -8897,6 +9299,9 @@ - (void)windowDidResignKey: (NSNotification *)notification
  
    emacsframe->mouse_moved = 0;
    ns_frame_rehighlight (emacsframe);
@@ -564,7 +609,7 @@ index 4f912f249dc..1edc8c0b812 100644
  
    /* FIXME: for some reason needed on second and subsequent clicks away
              from sole-frame Emacs to get hollow box to show.  */
-@@ -10009,6 +10371,7 @@ - (instancetype) initWithEmacsFrame: (struct frame *) f
+@@ -10251,6 +10656,7 @@ - (instancetype) initWithEmacsFrame: (struct frame *) f
          [self setOpaque:NO];
  #ifdef NS_IMPL_COCOA
        ns_update_background_blur (f);
