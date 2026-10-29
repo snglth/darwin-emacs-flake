@@ -34,3 +34,6 @@ jobs:
       # The post-build hook of cachix-action pushes the package and the
       # packages that it uses to the cache after each build.
       - run: nix build .#${{ matrix.package }} --print-build-logs
+
+      - if: matrix.package == 'emacs'
+        run: ./result/bin/emacs -Q --batch -l tests/frame-parameters-tests.el -f ert-run-tests-batch-and-exit

@@ -26,7 +26,19 @@ index 9d467a0..126903c 100644
  #endif
  };
  
-@@ -7327,6 +7337,11 @@ syms_of_frame (void)
+@@ -4235,6 +4245,11 @@ enum x_frame_parameter
+   NS_BACKGROUND_BLUR,
+   NS_ALPHA_ELEMENTS,
++  NS_GLASS_MATERIAL,
++  NS_GLASS_TINT_OPACITY,
++  NS_GLASS_SATURATION,
++  NS_GLASS_INACTIVE_OPACITY,
++  NS_GLASS_CORNER_RADIUS,
+ #endif
+   DISPLAY,
+   LEFT,
+   TOP,
+@@ -7327,6 +7342,11 @@ syms_of_frame (void)
    DEFSYM (Qns_transparent_titlebar, "ns-transparent-titlebar");
    DEFSYM (Qns_background_blur, "ns-background-blur");
    DEFSYM (Qns_alpha_elements, "ns-alpha-elements");

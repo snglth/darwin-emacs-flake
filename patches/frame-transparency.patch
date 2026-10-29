@@ -19,7 +19,16 @@ index 1594578c06d..9f95da7f0d8 100644
  #endif
  };
  
-@@ -7134,6 +7137,8 @@ syms_of_frame (void)
+@@ -4233,6 +4236,8 @@ enum x_frame_parameter
+   NS_APPEARANCE,
+   NS_TRANSPARENT_TITLEBAR,
++  NS_BACKGROUND_BLUR,
++  NS_ALPHA_ELEMENTS,
+ #endif
+   DISPLAY,
+   LEFT,
+   TOP,
+@@ -7134,6 +7139,8 @@ syms_of_frame (void)
  #ifdef NS_IMPL_COCOA
    DEFSYM (Qns_appearance, "ns-appearance");
    DEFSYM (Qns_transparent_titlebar, "ns-transparent-titlebar");

@@ -31,7 +31,15 @@ index 550fd336ff9..fd670cfa288 100644
    {"parent-frame",		SYMBOL_INDEX (Qparent_frame)},
    {"skip-taskbar",		SYMBOL_INDEX (Qskip_taskbar)},
    {"no-focus-on-map",		SYMBOL_INDEX (Qno_focus_on_map)},
-@@ -6801,6 +6803,7 @@ syms_of_frame (void)
+@@ -4215,6 +4217,7 @@ enum x_frame_parameter
+   TOOL_BAR_POSITION,
+   INHIBIT_DOUBLE_BUFFERING,
+   UNDECORATED,
++  UNDECORATED_ROUND,
+   PARENT_FRAME,
+   SKIP_TASKBAR,
+   NO_FOCUS_ON_MAP,
+@@ -6801,6 +6804,7 @@ syms_of_frame (void)
    DEFSYM (Qicon, "icon");
    DEFSYM (Qminibuffer, "minibuffer");
    DEFSYM (Qundecorated, "undecorated");
