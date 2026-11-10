@@ -133,3 +133,15 @@ this command:
 ```sh
 nix build .#emacs-gpu -L
 ```
+
+## License
+
+Copyright (C) 2026 Illia Shestakov.
+
+The original code and documentation in this repository are licensed under the
+GNU General Public License, version 3 or (at your option) any later version
+(`GPL-3.0-or-later`). See [LICENSE](LICENSE) for the full text.
+
+Imported patches retain their upstream copyrights and licenses. The patch
+sources are listed at the start of this README. Emacs and other dependencies
+retain their own licenses.
