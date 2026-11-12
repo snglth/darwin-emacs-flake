@@ -1,5 +1,5 @@
 {
-  description = "Patched emacs-git for aarch64-darwin (NSColor pixel cache), prebuilt in CI";
+  description = "Patched emacs-git and Aporetic Nerd Font for aarch64-darwin, prebuilt in CI";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -73,6 +73,23 @@
         ];
       });
 
+      aporetic-serif-mono-nerd-font = pkgs.stdenvNoCC.mkDerivation {
+        pname = "aporetic-serif-mono-nerd-font";
+        inherit (pkgs.aporetic) version;
+        nativeBuildInputs = [ pkgs.nerd-font-patcher ];
+        src = pkgs.aporetic;
+        buildPhase = ''
+          find $src/share/fonts/truetype -name 'aporetic-serif-mono-*.ttf' | while read ttf; do
+            nerd-font-patcher --complete --no-progressbars "$ttf" -out ./patched
+          done
+        '';
+        installPhase = ''
+          fontdir="$out/share/fonts/truetype"
+          install -d "$fontdir"
+          install ./patched/*.ttf "$fontdir"
+        '';
+      };
+
       # A test package: Emacs with the Metal GPU display backend from
       # github:tanrax/emacs-gpu (RFC, emacs-devel 2026-06 msg00177, Andros
       # Fenollosa). It is a full Emacs 31.0.90 fork. Thus we build its tree
@@ -105,7 +122,7 @@
     in
     {
       packages.${system} = {
-        inherit emacs emacs-gpu;
+        inherit emacs emacs-gpu aporetic-serif-mono-nerd-font;
         default = emacs;
       };
     };

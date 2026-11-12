@@ -48,6 +48,7 @@ result, **the build operates only on macOS 26 or a subsequent version**.
 ```
 packages.aarch64-darwin.emacs       # the patched emacs-git (also `.default`)
 packages.aarch64-darwin.emacs-gpu   # Metal GPU backend, a test package
+packages.aarch64-darwin.aporetic-serif-mono-nerd-font # Aporetic Serif Mono with Nerd Font glyphs
 ```
 
 ## Glass frame configuration
@@ -103,7 +104,7 @@ compiles to `NSVisualEffectView`, which gives blur, not glass.
 > **macOS 26 or a subsequent version is necessary.** The flake builds `emacs` at
 > deployment target 26.0 to get the glass effect. Thus the binary in the cache
 > does not start on a macOS version before 26. This does not apply to
-> `emacs-gpu`, which keeps the nixpkgs default.
+> `emacs-gpu` or `aporetic-serif-mono-nerd-font`, which keep the nixpkgs default.
 
 The binary cache is on cachix:
 
@@ -113,6 +114,24 @@ nix.settings.trusted-public-keys = [
   "snglth.cachix.org-1:XDPcXVEs97RJQ1SVmjf7cnZHcrE9pH7tE1TYJhKKJ1U="
 ];
 ```
+
+## Aporetic Nerd Font
+
+`packages.aarch64-darwin.aporetic-serif-mono-nerd-font` patches the Aporetic
+Serif Mono TTFs with `nerd-font-patcher --complete`. The font family name is
+`AporeticSerifMono Nerd Font`.
+
+CI builds the font and uploads it to the same Cachix cache as Emacs.
+Build it with this command:
+
+```sh
+nix build .#aporetic-serif-mono-nerd-font -L
+```
+
+To use this package from another flake, select
+`inputs.darwin-emacs.packages.aarch64-darwin.aporetic-serif-mono-nerd-font`
+instead of the local font derivation. This uses the inputs pinned by this
+flake, so workstation input updates do not change the font's store path.
 
 ## Metal GPU backend (a test package)
 

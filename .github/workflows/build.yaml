@@ -15,7 +15,7 @@ jobs:
       # emacs-gpu is a test package.  It must not stop the emacs build.
       fail-fast: false
       matrix:
-        package: [emacs, emacs-gpu]
+        package: [emacs, emacs-gpu, aporetic-serif-mono-nerd-font]
     steps:
       - uses: actions/checkout@v4
 
@@ -36,4 +36,6 @@ jobs:
       - run: nix build .#${{ matrix.package }} --print-build-logs
 
       - if: matrix.package == 'emacs'
-        run: ./result/bin/emacs -Q --batch -l tests/frame-parameters-tests.el -f ert-run-tests-batch-and-exit
+        run: >-
+          ./result/bin/emacs -Q --batch
+          -l tests/frame-parameters-tests.el -f ert-run-tests-batch-and-exit
