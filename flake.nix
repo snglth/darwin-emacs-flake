@@ -59,6 +59,10 @@
       # not change the compile SDK. As a result, the binaries operate only on
       # macOS 26 or a subsequent version.
       emacs = (pkgs.emacs-git.override { apple-sdk = pkgs.apple-sdk_26; }).overrideAttrs (old: {
+        # Avoid Savannah outages; keep the overlay's revision and content hash.
+        src = old.src.overrideAttrs {
+          url = "https://github.com/emacs-mirror/emacs.git";
+        };
         buildInputs = (old.buildInputs or [ ]) ++ [
           pkgs.apple-sdk_26
           (pkgs.darwinMinVersionHook "26.0")
