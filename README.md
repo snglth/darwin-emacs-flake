@@ -47,7 +47,6 @@ result, **the build operates only on macOS 26 or a subsequent version**.
 
 ```
 packages.aarch64-darwin.emacs       # the patched emacs-git (also `.default`)
-packages.aarch64-darwin.emacs-gpu   # Metal GPU backend, a test package
 packages.aarch64-darwin.aporetic-serif-mono-nerd-font # Aporetic Serif Mono with Nerd Font glyphs
 ```
 
@@ -104,9 +103,22 @@ compiles to `NSVisualEffectView`, which gives blur, not glass.
 > **macOS 26 or a subsequent version is necessary.** The flake builds `emacs` at
 > deployment target 26.0 to get the glass effect. Thus the binary in the cache
 > does not start on a macOS version before 26. This does not apply to
-> `emacs-gpu` or `aporetic-serif-mono-nerd-font`, which keep the nixpkgs default.
+> `aporetic-serif-mono-nerd-font`, which keeps the nixpkgs default.
 
-The binary cache is on cachix:
+PRs and manual builds have read-only access to the cache. After a merge to
+`master`, CI builds the packages and runs the Emacs tests again. A separate
+job uploads those outputs and their dependencies to Cachix. It reads only
+the artifact from that push.
+
+Store `CACHIX_AUTH_TOKEN` in the `cache-publish` GitHub environment.
+Allow deployments from the `master` branch only. Keep the token out of
+repository secrets. Branch protection requires a PR and the
+`build-and-test` check, including for admins.
+
+The weekly updater opens a PR for `flake.lock`. Review the dependency
+changes and approve the workflow run on the PR before merging.
+
+To use the binary cache:
 
 ```nix
 nix.settings.substituters = [ "https://snglth.cachix.org" ];
@@ -140,26 +152,6 @@ To use this package from another flake, select
 `inputs.darwin-emacs.packages.aarch64-darwin.aporetic-serif-mono-nerd-font`
 instead of the local font derivation. This uses the inputs pinned by this
 flake, so workstation input updates do not change the font's store path.
-
-## Metal GPU backend (a test package)
-
-`packages.aarch64-darwin.emacs-gpu` builds
-[`tanrax/emacs-gpu`](https://github.com/tanrax/emacs-gpu). This is a full Emacs
-31.0.90 fork of Andros Fenollosa that adds a Metal GPU display backend
-([RFC, emacs-devel 2026-06](https://lists.gnu.org/archive/html/emacs-devel/2026-06/msg00177.html)).
-It is a full fork, not a patch on master. Thus the flake builds it from the
-source of the fork, with `--with-mtl` added to the `emacs-git` recipe of the
-overlay. The flake does not apply it to the patched `emacs`.
-
-The source includes the shaders, and Emacs compiles them when it operates
-(`newLibraryWithSource:`). Thus a Metal toolchain before the build is not
-necessary. Only the macOS SDK frameworks that `--with-mtl` uses are necessary.
-This package operates independently of `emacs` and `.default`. Build it with
-this command:
-
-```sh
-nix build .#emacs-gpu -L
-```
 
 ## License
 

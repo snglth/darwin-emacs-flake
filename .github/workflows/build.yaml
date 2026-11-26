@@ -1,45 +1,89 @@
 name: build
 
 on:
-  push:
-    branches: [main, master]
   pull_request:
+  push:
+    branches: [master]
   workflow_dispatch:
 
-jobs:
-  build:
-    # An Apple Silicon (arm64) runner is necessary to build aarch64-darwin.
-    # Public repositories get free minutes on this runner.
-    runs-on: macos-26
-    strategy:
-      # emacs-gpu is a test package.  It must not stop the emacs build.
-      fail-fast: false
-      matrix:
-        package: [emacs, emacs-gpu, aporetic-serif-mono-nerd-font]
-    steps:
-      - uses: actions/checkout@v4
+permissions:
+  contents: read
 
-      - uses: cachix/install-nix-action@v31
+jobs:
+  build-and-test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
+          persist-credentials: false
+
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086
+        with:
+          # The Nix signing key must stay on one line.
+          # yamllint disable rule:line-length
           extra_nix_config: |
             experimental-features = nix-command flakes
+            extra-substituters = https://snglth.cachix.org
+            extra-trusted-public-keys = snglth.cachix.org-1:XDPcXVEs97RJQ1SVmjf7cnZHcrE9pH7tE1TYJhKKJ1U=
+          # yamllint enable rule:line-length
 
-      - uses: cachix/cachix-action@v17
+      - name: Build packages and test Emacs
+        run: |
+          roots="$RUNNER_TEMP/roots"
+          nix build --print-build-logs --print-out-paths .#emacs > "$roots"
+          ./result/bin/emacs -Q --batch -l tests/frame-parameters-tests.el \
+            -f ert-run-tests-batch-and-exit
+          nix build --no-link --print-build-logs --print-out-paths \
+            .#{auctex,evil-collection,ghostel,magit,agent-shell,flycheck} \
+            .#pdf-tools .#aporetic-serif-mono-nerd-font >> "$roots"
+
+      - name: Export tested closures
+        if: github.event_name == 'push'
+        run: |
+          mkdir "$RUNNER_TEMP/release"
+          test -s "$RUNNER_TEMP/roots"
+          cp "$RUNNER_TEMP/roots" "$RUNNER_TEMP/release/"
+          cd "$RUNNER_TEMP/release"
+          xargs nix copy --to "file://$PWD/store?compression=zstd" < roots
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: github.event_name == 'push'
         with:
-          name: snglth
-          # This repo secret is a Cachix auth token with write access to the
-          # cache.
-          authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+          name: tested-closures
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+          overwrite: true
+          compression-level: 0
+          retention-days: 1
 
-      # The post-build hook of cachix-action pushes the package and the
-      # packages that it uses to the cache after each build.
-      - run: nix build .#${{ matrix.package }} --print-build-logs
+  publish:
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: cache-publish
+    steps:
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086
 
-      - if: matrix.package == 'emacs'
-        run: >-
-          ./result/bin/emacs -Q --batch
-          -l tests/frame-parameters-tests.el -f ert-run-tests-batch-and-exit
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: tested-closures
+          path: ${{ runner.temp }}/release
 
-      - name: Build Emacs packages for Cachix
-        if: matrix.package == 'emacs'
-        run: nix build --no-link --print-build-logs .#{auctex,evil-collection,ghostel,magit,agent-shell,flycheck,pdf-tools}
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+
+      - name: Import closures and install the pinned Cachix client
+        run: |
+          cd "$RUNNER_TEMP/release"
+          xargs nix copy --no-check-sigs --from "file://$PWD/store" < roots
+          nix build --inputs-from "$GITHUB_WORKSPACE" nixpkgs#cachix \
+            -o "$RUNNER_TEMP/cachix"
+
+      - name: Publish tested closures
+        env:
+          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        run: |
+          : "${CACHIX_AUTH_TOKEN:?Set the cache-publish environment secret}"
+          cd "$RUNNER_TEMP/release"
+          "$RUNNER_TEMP/cachix/bin/cachix" push snglth < roots

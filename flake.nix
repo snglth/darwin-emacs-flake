@@ -147,35 +147,6 @@
         '';
       };
 
-      # A test package: Emacs with the Metal GPU display backend from
-      # github:tanrax/emacs-gpu (RFC, emacs-devel 2026-06 msg00177, Andros
-      # Fenollosa). It is a full Emacs 31.0.90 fork. Thus we build its tree
-      # directly, and do not apply a 7400-line diff to emacs-git (32.0.50).
-      # The source includes the shaders, and Emacs compiles them when it
-      # operates with newLibraryWithSource:. Thus a Metal toolchain (Xcode)
-      # before the build is not necessary. Only the SDK frameworks are
-      # necessary, and configure connects them with MTL_LIBS when it gets
-      # `--with-mtl`. We keep the native-comp patch and the configureFlags of
-      # the overlay, and add only the flag.
-      emacs-gpu = pkgs.emacs-git.overrideAttrs (old: {
-        pname = "emacs-gpu";
-        version = "31.0.90-gpu-unstable-2026-06-18";
-        src = pkgs.fetchFromGitHub {
-          owner = "tanrax";
-          repo = "emacs-gpu";
-          rev = "db296675d856f924c80671428565ed377314caea";
-          hash = "sha256-+mFtRJvvIQPjac2U6hkxx+2vXtEKg58PQyhwKiubB0Y=";
-        };
-        # OBJC=clang: the --with-mtl test does AC_LANG_PUSH([Objective C]),
-        # which makes autoconf select `gcc` for Objective-C. That compiler does
-        # not have the Apple framework search path. Thus it does not find
-        # `Metal/Metal.h`, but clang does find it. We set OBJC to the same
-        # wrapped clang as CC.
-        configureFlags = (old.configureFlags or [ ]) ++ [
-          "--with-mtl"
-          "OBJC=clang"
-        ];
-      });
     in
     {
       legacyPackages.${system} = emacsPackages;
@@ -189,7 +160,7 @@
           flycheck
           pdf-tools
           ;
-        inherit emacs emacs-gpu aporetic-serif-mono-nerd-font;
+        inherit emacs aporetic-serif-mono-nerd-font;
         default = emacs;
       };
     };
