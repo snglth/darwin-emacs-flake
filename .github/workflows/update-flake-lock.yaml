@@ -2,36 +2,49 @@ name: update-flake-lock
 
 on:
   schedule:
-    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+    - cron: '0 6 * * 1'
   workflow_dispatch:
+
+permissions: {}
+concurrency: update-flake-lock
 
 jobs:
   update:
-    # This task only calculates the inputs again and builds no package.
-    # Thus it uses a Linux runner, and a macOS runner is not necessary.  The
-    # push at the end of this task starts the macOS build in build.yaml.
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      # ssh-key sets the remote through SSH with the deploy key.  Thus the
-      # push, and GitHub identifies it with the key, not with GITHUB_TOKEN.
-      # Thus the push DOES start build.yaml on master.  A deploy key with write access is
-      # necessary for this step.  The repo secret FLAKE_UPDATE_DEPLOY_KEY
-      # keeps the private key.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ssh-key: '${{ secrets.FLAKE_UPDATE_DEPLOY_KEY }}'
+          ref: master
+          persist-credentials: false
 
-      - uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
+      - uses: cachix/install-nix-action@3dc140bfc76c49fbd4dd958429132e3746bcb086
 
-      - name: Update flake.lock
+      - run: nix flake update
+
+      - name: Open or update the lock PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          # This command makes a commit only if the lock file changed.
-          nix flake update --commit-lock-file
+          if git diff --quiet HEAD -- flake.lock; then exit 0; fi
 
-      - name: Push
-        run: git push origin HEAD:master
+          branch=automation/flake-lock
+          ref="refs/heads/$branch"
+          gh auth setup-git
+          expected=$(git ls-remote --refs origin "$ref" | cut -f1)
+          bot_email='41898282+github-actions[bot]@users.noreply.github.com'
+          git -c user.name='github-actions[bot]' -c user.email="$bot_email" \
+            commit -m 'Update flake.lock' -- flake.lock
+          git push --force-with-lease="$ref:$expected" origin "HEAD:$ref"
+
+          open=$(gh pr list --state open --base master --head "$branch" \
+            --json isCrossRepository --jq 'any(.[]; .isCrossRepository | not)')
+          if [[ $open == false ]]; then
+            gh pr create --base master --head "$branch" \
+              --title 'Update flake.lock' \
+              --body 'Review the input revisions and approve the build.'
+          fi
