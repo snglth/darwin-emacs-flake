@@ -77,6 +77,59 @@
         ];
       });
 
+      # Consume helper arguments so Emacs 32 batch startup cannot reopen them as files.
+      consumeArgs =
+        path:
+        let
+          source = builtins.readFile path;
+          pattern = "(pcase command-line-args-left";
+        in
+        assert pkgs.lib.hasInfix pattern source;
+        pkgs.writeText (builtins.baseNameOf path) (
+          builtins.replaceStrings
+            [ pattern ]
+            [ "(pcase (prog1 command-line-args-left (setq command-line-args-left nil))" ]
+            source
+        );
+
+      emacsPackages = (pkgs.emacsPackagesFor emacs).overrideScope (
+        _final: prev: {
+          melpaBuild =
+            args:
+            (prev.melpaBuild args).overrideAttrs (old: {
+              melpa2nix = consumeArgs old.melpa2nix;
+              elpa2nix = consumeArgs old.elpa2nix;
+            });
+          elpaBuild =
+            args:
+            (prev.elpaBuild args).overrideAttrs (old: {
+              elpa2nix = consumeArgs old.elpa2nix;
+            });
+
+          # Pin the release with its Zig dependency hash; the overlay updates weekly.
+          ghostel = prev.ghostel.overrideAttrs (
+            attrs: _old: {
+              version = "0.67.0";
+              src = pkgs.fetchFromGitHub {
+                owner = "dakra";
+                repo = "ghostel";
+                rev = "b0330a90b46fde82c47122add00d4440cef35711";
+                hash = "sha256-GjS6SYoCwmRrP2P7SOFTtStHDPtuy6Uq52Sug8eYfYE=";
+              };
+              zig = pkgs.zig_0_17;
+              zigDeps = attrs.zig.fetchDeps {
+                inherit (attrs) src pname version;
+                fetchAll = true;
+                hash = "sha256-3pDE8/KCzHR08VqAHJR6rdMOGARCyH0tc5UTOeCvs14=";
+              };
+              files = ''
+                ("lisp/*.el" "etc" "ghostel-module${pkgs.stdenv.hostPlatform.extensions.sharedLibrary}" "ghostel-module.version")
+              '';
+            }
+          );
+        }
+      );
+
       aporetic-serif-mono-nerd-font = pkgs.stdenvNoCC.mkDerivation {
         pname = "aporetic-serif-mono-nerd-font";
         inherit (pkgs.aporetic) version;
@@ -125,7 +178,17 @@
       });
     in
     {
+      legacyPackages.${system} = emacsPackages;
       packages.${system} = {
+        inherit (emacsPackages)
+          auctex
+          evil-collection
+          ghostel
+          magit
+          agent-shell
+          flycheck
+          pdf-tools
+          ;
         inherit emacs emacs-gpu aporetic-serif-mono-nerd-font;
         default = emacs;
       };

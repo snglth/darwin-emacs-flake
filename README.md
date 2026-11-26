@@ -115,6 +115,14 @@ nix.settings.trusted-public-keys = [
 ];
 ```
 
+CI also caches `auctex`, `evil-collection`, `ghostel`, `magit`, `agent-shell`,
+`flycheck`, and `pdf-tools` for the patched `emacs`. To use the same store paths
+in another flake, start with `inputs.darwin-emacs.legacyPackages.aarch64-darwin`:
+
+```nix
+inputs.darwin-emacs.legacyPackages.aarch64-darwin.emacsWithPackages (epkgs: [ epkgs.ghostel ])
+```
+
 ## Aporetic Nerd Font
 
 `packages.aarch64-darwin.aporetic-serif-mono-nerd-font` patches the Aporetic
