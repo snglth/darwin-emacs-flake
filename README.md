@@ -49,3 +49,6 @@ The default style is `regular`. Use `(macos-glass-set-style 'clear)` for clear g
 
 Copyright (C) 2026 Illia Shestakov. Original code and documentation: [GPL-3.0-or-later](LICENSE).
 Imported patches retain their upstream copyrights and licenses.
+
+Aporetic Serif Mono uses the [SIL Open Font License 1.1](https://github.com/protesilaos/aporetic/blob/1.2.0/LICENSE.md).
+The added glyphs retain their [Nerd Fonts upstream licenses](https://github.com/ryanoasis/nerd-fonts/blob/master/license-audit.md).
