@@ -86,4 +86,4 @@ jobs:
         run: |
           : "${CACHIX_AUTH_TOKEN:?Set the cache-publish environment secret}"
           cd "$RUNNER_TEMP/release"
-          "$RUNNER_TEMP/cachix/bin/cachix" push snglth < roots
+          "$RUNNER_TEMP/cachix-bin/bin/cachix" push snglth < roots
